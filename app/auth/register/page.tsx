@@ -79,7 +79,7 @@ export default function RegisterPage() {
   }
 
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 50 }, (_, i) => currentYear - i)
+  const years = Array.from({ length: 100 }, (_, i) => currentYear - i)
 
   const departments = [
     "Computer Science Engineering",

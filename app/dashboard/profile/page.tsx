@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { User, Building2, GraduationCap, Phone, Linkedin, Mail, Calendar } from "lucide-react"
+import { User, Building2, GraduationCap, Phone, Linkedin, Mail, Calendar, Camera, Upload } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 interface Profile {
@@ -34,6 +34,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -63,6 +65,75 @@ export default function ProfilePage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleImageUpload = async (file: File) => {
+    if (!profile) return
+
+    setIsUploadingImage(true)
+    try {
+      // Create a preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+
+      // Upload to Supabase Storage
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`
+      const filePath = `profile-images/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
+        upsert: true,
+      })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath)
+
+      // Update profile with image URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ profile_image_url: publicUrl })
+        .eq("id", profile.id)
+
+      if (updateError) throw updateError
+
+      setProfile({ ...profile, profile_image_url: publicUrl })
+      setPreviewImage(null)
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully!",
+      })
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture.",
+        variant: "destructive",
+      })
+      setPreviewImage(null)
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleImageUpload(file)
+    }
+  }
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleImageUpload(file)
     }
   }
 
@@ -151,9 +222,9 @@ export default function ProfilePage() {
         {/* Profile Overview Card */}
         <Card className="md:col-span-1 border-border/50">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-4 relative group">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={profile.profile_image_url || ""} />
+                <AvatarImage src={previewImage || profile.profile_image_url || ""} />
                 <AvatarFallback className="bg-golden/10 text-golden text-lg">
                   {profile.full_name
                     .split(" ")
@@ -161,6 +232,37 @@ export default function ProfilePage() {
                     .join("")}
                 </AvatarFallback>
               </Avatar>
+              {isEditing && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                  {isUploadingImage ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <label className="cursor-pointer p-2 bg-golden hover:bg-golden/90 rounded-full transition-colors" title="Upload from gallery">
+                        <Upload className="h-4 w-4 text-black" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleGalleryUpload}
+                          disabled={isUploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+                      <label className="cursor-pointer p-2 bg-golden hover:bg-golden/90 rounded-full transition-colors" title="Capture from camera">
+                        <Camera className="h-4 w-4 text-black" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleCameraCapture}
+                          disabled={isUploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <CardTitle className="text-xl">{profile.full_name}</CardTitle>
             <CardDescription className="flex items-center justify-center gap-2">
