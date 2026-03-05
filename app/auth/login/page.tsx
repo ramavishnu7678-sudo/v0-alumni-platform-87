@@ -84,9 +84,17 @@ export default function LoginPage() {
                 <p className="text-xs text-muted-foreground">Only @mce.edu.in email addresses are accepted</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium">
+                    Password
+                  </Label>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
+                  >
+                    Forgot?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"
