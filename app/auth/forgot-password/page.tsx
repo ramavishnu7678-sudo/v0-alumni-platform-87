@@ -63,19 +63,26 @@ export default function ForgotPasswordPage() {
         return
       }
 
-      // Generate OTP
-      const { data, error } = await supabase.rpc('generate_password_reset_otp', {
-        p_email: email,
-      })
+      // Generate OTP locally (6-digit code)
+      const otp = Math.floor(100000 + Math.random() * 900000).toString()
 
-      if (error) throw error
+      // Store OTP in database
+      const { error: insertError } = await supabase
+        .from('password_reset_otps')
+        .insert({
+          email: email,
+          otp_code: otp,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        })
 
-      setGeneratedOtp(data)
+      if (insertError) throw insertError
+
+      setGeneratedOtp(otp)
       setOtpSent(true)
 
       toast({
         title: 'Success',
-        description: `OTP has been generated. Your code is: ${data}`,
+        description: `OTP has been generated. Your code is: ${otp}`,
       })
     } catch (error) {
       console.error('Error generating OTP:', error)

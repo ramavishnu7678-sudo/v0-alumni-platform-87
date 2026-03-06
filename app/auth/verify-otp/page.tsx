@@ -69,15 +69,15 @@ export default function VerifyOtpPage() {
 
     setIsVerifying(true)
     try {
-      // Verify OTP
-      const { data, error } = await supabase.rpc('check_password_reset_otp', {
-        p_email: email,
-        p_otp: otp,
-      })
+      // Verify OTP from database
+      const { data: otpRecords, error: fetchError } = await supabase
+        .from('password_reset_otps')
+        .select('*')
+        .eq('email', email)
+        .eq('otp_code', otp)
+        .single()
 
-      if (error) throw error
-
-      if (!data) {
+      if (fetchError || !otpRecords) {
         toast({
           title: 'Error',
           description: 'Invalid or expired OTP. Please try again.',
@@ -87,13 +87,25 @@ export default function VerifyOtpPage() {
         return
       }
 
-      // Mark OTP as verified
-      const { error: verifyError } = await supabase.rpc('verify_password_reset_otp', {
-        p_email: email,
-        p_otp: otp,
-      })
+      // Check if OTP is expired
+      const expiresAt = new Date(otpRecords.expires_at)
+      if (expiresAt < new Date()) {
+        toast({
+          title: 'Error',
+          description: 'OTP has expired. Please request a new one.',
+          variant: 'destructive',
+        })
+        setIsVerifying(false)
+        return
+      }
 
-      if (verifyError) throw verifyError
+      // Mark OTP as used
+      const { error: updateError } = await supabase
+        .from('password_reset_otps')
+        .update({ is_used: true })
+        .eq('id', otpRecords.id)
+
+      if (updateError) throw updateError
 
       setOtpVerified(true)
       toast({
@@ -129,15 +141,23 @@ export default function VerifyOtpPage() {
 
     setIsLoading(true)
     try {
-      const { data, error } = await supabase.rpc('generate_password_reset_otp', {
-        p_email: email,
-      })
+      // Generate new OTP
+      const newOtp = Math.floor(100000 + Math.random() * 900000).toString()
 
-      if (error) throw error
+      // Store new OTP in database
+      const { error: insertError } = await supabase
+        .from('password_reset_otps')
+        .insert({
+          email: email,
+          otp_code: newOtp,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        })
+
+      if (insertError) throw insertError
 
       toast({
         title: 'Success',
-        description: `New OTP generated: ${data}`,
+        description: `New OTP generated: ${newOtp}`,
       })
       setTimeLeft(600)
       setOtp('')
