@@ -35,25 +35,29 @@ export default function ForgotPasswordPage() {
       return
     }
 
-    if (!email.endsWith('@mce.edu.in')) {
-      toast({
-        title: 'Error',
-        description: 'Please use your @mce.edu.in email address.',
-        variant: 'destructive',
-      })
-      return
-    }
-
     setIsLoading(true)
     try {
-      // Check if user exists
-      const { data: profile, error: profileError } = await supabase
+      // Check if user exists in profiles table
+      const { data: profile } = await supabase
         .from('profiles')
         .select('id')
         .eq('email', email)
         .single()
 
-      if (profileError || !profile) {
+      let userExists = !!profile
+
+      // If not found in profiles, check email_aliases table
+      if (!userExists) {
+        const { data: alias } = await supabase
+          .from('email_aliases')
+          .select('user_id')
+          .eq('email', email)
+          .single()
+
+        userExists = !!alias
+      }
+
+      if (!userExists) {
         toast({
           title: 'Error',
           description: 'No account found with this email address.',
@@ -133,12 +137,15 @@ export default function ForgotPasswordPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your.email@mce.edu.in"
+                  placeholder="your.email@mce.edu.in or alternate email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                   className="h-11 bg-input/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Accepted: @mce.edu.in, @student.mce.edu.in, @alumni.mce.edu.in, or registered alternate emails
+                </p>
               </div>
 
               <Button

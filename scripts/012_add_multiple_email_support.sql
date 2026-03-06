@@ -21,22 +21,26 @@ CREATE INDEX IF NOT EXISTS idx_email_aliases_user_id ON public.email_aliases(use
 ALTER TABLE public.email_aliases ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Users can view their own email aliases
-CREATE POLICY IF NOT EXISTS "Users can view their own email aliases"
+DROP POLICY IF EXISTS "Users can view their own email aliases" ON public.email_aliases;
+CREATE POLICY "Users can view their own email aliases"
 ON public.email_aliases FOR SELECT
 USING (auth.uid() = user_id);
 
 -- RLS Policy: Users can insert their own email aliases
-CREATE POLICY IF NOT EXISTS "Users can insert their own email aliases"
+DROP POLICY IF EXISTS "Users can insert their own email aliases" ON public.email_aliases;
+CREATE POLICY "Users can insert their own email aliases"
 ON public.email_aliases FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
 -- RLS Policy: Users can update their own email aliases
-CREATE POLICY IF NOT EXISTS "Users can update their own email aliases"
+DROP POLICY IF EXISTS "Users can update their own email aliases" ON public.email_aliases;
+CREATE POLICY "Users can update their own email aliases"
 ON public.email_aliases FOR UPDATE
 USING (auth.uid() = user_id);
 
 -- RLS Policy: Users can delete their own email aliases
-CREATE POLICY IF NOT EXISTS "Users can delete their own email aliases"
+DROP POLICY IF EXISTS "Users can delete their own email aliases" ON public.email_aliases;
+CREATE POLICY "Users can delete their own email aliases"
 ON public.email_aliases FOR DELETE
 USING (auth.uid() = user_id);
 
@@ -83,18 +87,19 @@ CREATE TABLE IF NOT EXISTS public.allowed_email_domains (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Insert default allowed email domains
+-- Insert default allowed email domains (if not already present)
+DELETE FROM public.allowed_email_domains WHERE domain IN ('mce.edu.in', 'student.mce.edu.in', 'alumni.mce.edu.in');
 INSERT INTO public.allowed_email_domains (domain, institution_name, is_active)
 VALUES 
-  ('@mce.edu.in', 'Madras City Engineering', true),
-  ('@student.mce.edu.in', 'MCE Student Email', true),
-  ('@alumni.mce.edu.in', 'MCE Alumni Email', true)
-ON CONFLICT (domain) DO NOTHING;
+  ('mce.edu.in', 'Madras City Engineering', true),
+  ('student.mce.edu.in', 'MCE Student Email', true),
+  ('alumni.mce.edu.in', 'MCE Alumni Email', true);
 
 -- Enable RLS on allowed_email_domains
 ALTER TABLE public.allowed_email_domains ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Anyone can view allowed domains
-CREATE POLICY IF NOT EXISTS "Anyone can view allowed email domains"
+DROP POLICY IF EXISTS "Anyone can view allowed email domains" ON public.allowed_email_domains;
+CREATE POLICY "Anyone can view allowed email domains"
 ON public.allowed_email_domains FOR SELECT
 USING (is_active = true);
