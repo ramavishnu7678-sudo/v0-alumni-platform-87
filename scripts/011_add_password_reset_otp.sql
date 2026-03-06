@@ -44,5 +44,3 @@ BEGIN
   WHERE expires_at < NOW() - INTERVAL '1 hour';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-END;
-$$ LANGUAGE plpgsql;
