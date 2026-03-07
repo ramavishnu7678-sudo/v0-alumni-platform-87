@@ -222,48 +222,58 @@ export default function ProfilePage() {
         {/* Profile Overview Card */}
         <Card className="md:col-span-1 border-border/50">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-4 relative group">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={previewImage || profile.profile_image_url || ""} />
-                <AvatarFallback className="bg-golden/10 text-golden text-lg">
-                  {profile.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-              {isEditing && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                  {isUploadingImage ? (
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <label className="cursor-pointer p-2 bg-golden hover:bg-golden/90 rounded-full transition-colors" title="Upload from gallery">
-                        <Upload className="h-4 w-4 text-black" />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleGalleryUpload}
-                          disabled={isUploadingImage}
-                          className="hidden"
-                        />
-                      </label>
-                      <label className="cursor-pointer p-2 bg-golden hover:bg-golden/90 rounded-full transition-colors" title="Capture from camera">
-                        <Camera className="h-4 w-4 text-black" />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handleCameraCapture}
-                          disabled={isUploadingImage}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="flex justify-center mb-6 relative group">
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-golden/20">
+                  <AvatarImage src={previewImage || profile.profile_image_url || ""} />
+                  <AvatarFallback className="bg-golden/10 text-golden text-2xl">
+                    {profile.full_name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                {isEditing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        <span className="text-white text-xs">Uploading...</span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <label className="cursor-pointer p-3 bg-golden hover:bg-golden/90 rounded-full transition-all duration-200 transform hover:scale-110" title="Upload from gallery">
+                          <Upload className="h-5 w-5 text-black font-bold" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleGalleryUpload}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                        <label className="cursor-pointer p-3 bg-golden hover:bg-golden/90 rounded-full transition-all duration-200 transform hover:scale-110" title="Capture from camera">
+                          <Camera className="h-5 w-5 text-black font-bold" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleCameraCapture}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
+            {isEditing && (
+              <p className="text-xs text-muted-foreground text-center mb-2">
+                Hover over photo to upload from gallery or camera
+              </p>
+            )}
             <CardTitle className="text-xl">{profile.full_name}</CardTitle>
             <CardDescription className="flex items-center justify-center gap-2">
               <Mail className="h-4 w-4" />
