@@ -366,8 +366,8 @@ export default function ProfilePage() {
                       id="graduation_year"
                       name="graduation_year"
                       type="number"
-                      min="1950"
-                      max="2030"
+                      min="1926"
+                      max="2070"
                       defaultValue={profile.graduation_year}
                       required
                       className="border-border/50 focus:border-golden"
