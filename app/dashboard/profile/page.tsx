@@ -137,11 +137,13 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSave = async (formData: FormData) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     if (!profile) return
 
     setIsSaving(true)
     try {
+      const formData = new FormData(e.currentTarget)
       const updates = {
         full_name: formData.get("full_name") as string,
         current_company: (formData.get("current_company") as string) || null,
@@ -335,7 +337,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             {isEditing ? (
-              <form action={handleSave} className="space-y-6">
+              <form onSubmit={handleSave} className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="full_name">Full Name *</Label>
