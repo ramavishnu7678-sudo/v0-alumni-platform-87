@@ -20,6 +20,10 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(true)
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false)
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false)
+  const [show2FASetup, setShow2FASetup] = useState(false)
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,8 +51,106 @@ export default function SettingsPage() {
 
       setNotificationsEnabled(savedNotifications !== 'false')
       setEmailNotifications(savedEmailNotifications !== 'false')
+
+      // Check 2FA status
+      const { data: twoFactorData } = await supabase
+        .from('two_factor_auth')
+        .select('is_enabled')
+        .eq('user_id', user.id)
+        .single()
+
+      setIs2FAEnabled(twoFactorData?.is_enabled || false)
     } catch (error) {
       console.error('Error loading settings:', error)
+    }
+  }
+
+  const generateBackupCodes = (): string[] => {
+    const codes = []
+    for (let i = 0; i < 8; i++) {
+      codes.push(Math.random().toString(36).substring(2, 10).toUpperCase())
+    }
+    return codes
+  }
+
+  const handleEnable2FA = async () => {
+    setIsLoadingSettings(true)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
+
+      const codes = generateBackupCodes()
+      setBackupCodes(codes)
+
+      // Store 2FA settings in database
+      const { error } = await supabase
+        .from('two_factor_auth')
+        .upsert({
+          user_id: user.id,
+          is_enabled: true,
+          backup_codes: codes,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+
+      if (error) throw error
+
+      setIs2FAEnabled(true)
+      setShow2FASetup(true)
+
+      toast({
+        title: 'Success',
+        description: 'Two-Factor Authentication has been enabled!',
+      })
+    } catch (error) {
+      console.error('Error enabling 2FA:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to enable 2FA. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingSettings(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    setIsLoadingSettings(true)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      const { error } = await supabase
+        .from('two_factor_auth')
+        .update({ is_enabled: false })
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      setIs2FAEnabled(false)
+      setShow2FASetup(false)
+
+      toast({
+        title: 'Success',
+        description: 'Two-Factor Authentication has been disabled.',
+      })
+    } catch (error) {
+      console.error('Error disabling 2FA:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to disable 2FA.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingSettings(false)
     }
   }
 
@@ -287,18 +389,64 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-muted/50 border border-border/50 flex gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-medium">Two-Factor Authentication</h4>
-                <p className="text-sm text-muted-foreground">
-                  Add an extra layer of security to your account with 2FA
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" disabled className="w-full">
-              Coming Soon
-            </Button>
+            {!show2FASetup ? (
+              <>
+                <div className="p-4 rounded-lg bg-muted/50 border border-border/50 flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium">Two-Factor Authentication</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {is2FAEnabled 
+                        ? 'Two-Factor Authentication is currently enabled on your account.'
+                        : 'Add an extra layer of security to your account with 2FA'}
+                    </p>
+                  </div>
+                </div>
+                {is2FAEnabled ? (
+                  <Button 
+                    onClick={handleDisable2FA}
+                    disabled={isLoadingSettings}
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    {isLoadingSettings ? 'Disabling...' : 'Disable 2FA'}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleEnable2FA}
+                    disabled={isLoadingSettings}
+                    className="bg-golden hover:bg-golden/90 w-full"
+                  >
+                    {isLoadingSettings ? 'Enabling...' : 'Enable 2FA'}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                  <h4 className="font-medium text-green-900 mb-2">2FA Enabled Successfully!</h4>
+                  <p className="text-sm text-green-800 mb-4">
+                    Save these backup codes in a safe place. You can use them to access your account if you lose access to your 2FA device.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded border border-green-200">
+                    {backupCodes.map((code, index) => (
+                      <code key={index} className="text-sm font-mono text-center py-1 bg-gray-100 rounded">
+                        {code}
+                      </code>
+                    ))}
+                  </div>
+                  <p className="text-xs text-green-700 mt-3">
+                    Each code can only be used once
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setShow2FASetup(false)}
+                  className="w-full"
+                >
+                  Done
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
