@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { User, Building2, GraduationCap, Phone, Linkedin, Mail, Calendar, Camera, Upload } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 interface Profile {
   id: string
@@ -213,11 +214,18 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-bold text-foreground">Profile</h1>
           <p className="text-muted-foreground">Manage your personal information and preferences</p>
         </div>
-        {!isEditing && (
-          <Button onClick={() => setIsEditing(true)} className="bg-golden hover:bg-golden/90">
-            Edit Profile
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <Link href="/dashboard/settings">
+            <Button variant="outline">
+              Settings
+            </Button>
+          </Link>
+          <Link href="/dashboard/edit-profile">
+            <Button className="bg-golden hover:bg-golden/90">
+              Edit Profile
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
