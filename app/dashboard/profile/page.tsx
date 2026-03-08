@@ -220,11 +220,12 @@ export default function ProfilePage() {
               Settings
             </Button>
           </Link>
-          <Link href="/dashboard/edit-profile">
-            <Button className="bg-golden hover:bg-golden/90">
-              Edit Profile
-            </Button>
-          </Link>
+          <Button 
+            onClick={() => setIsEditing(!isEditing)}
+            className={isEditing ? "bg-red-500 hover:bg-red-600" : "bg-golden hover:bg-golden/90"}
+          >
+            {isEditing ? "Cancel Editing" : "Edit Profile"}
+          </Button>
         </div>
       </div>
 
