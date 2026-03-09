@@ -189,7 +189,42 @@ export default function SettingsPage() {
         return
       }
 
-      // In a real app, you'd verify the current password first
+      if (currentPassword === newPassword) {
+        toast({
+          title: 'Error',
+          description: 'New password must be different from current password.',
+          variant: 'destructive',
+        })
+        setPasswordLoading(false)
+        return
+      }
+
+      // Get current user email for re-authentication
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user?.email) {
+        throw new Error('Unable to get user email')
+      }
+
+      // Verify current password by attempting to sign in with current credentials
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      })
+
+      if (signInError) {
+        toast({
+          title: 'Error',
+          description: 'Current password is incorrect.',
+          variant: 'destructive',
+        })
+        setPasswordLoading(false)
+        return
+      }
+
+      // Update password
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       })
@@ -198,7 +233,7 @@ export default function SettingsPage() {
 
       toast({
         title: 'Success',
-        description: 'Password changed successfully!',
+        description: 'Password changed successfully! You may need to log in again.',
       })
 
       setCurrentPassword('')
