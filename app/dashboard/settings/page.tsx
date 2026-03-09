@@ -179,10 +179,27 @@ export default function SettingsPage() {
         return
       }
 
+      // Validate password strength
       if (newPassword.length < 8) {
         toast({
           title: 'Error',
           description: 'Password must be at least 8 characters long.',
+          variant: 'destructive',
+        })
+        setPasswordLoading(false)
+        return
+      }
+
+      // Check for uppercase, lowercase, number, and special character
+      const hasUpperCase = /[A-Z]/.test(newPassword)
+      const hasLowerCase = /[a-z]/.test(newPassword)
+      const hasNumber = /[0-9]/.test(newPassword)
+      const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)
+
+      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        toast({
+          title: 'Weak Password',
+          description: 'Password must contain uppercase, lowercase, number, and special character.',
           variant: 'destructive',
         })
         setPasswordLoading(false)
@@ -199,32 +216,7 @@ export default function SettingsPage() {
         return
       }
 
-      // Get current user email for re-authentication
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user?.email) {
-        throw new Error('Unable to get user email')
-      }
-
-      // Verify current password by attempting to sign in with current credentials
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      })
-
-      if (signInError) {
-        toast({
-          title: 'Error',
-          description: 'Current password is incorrect.',
-          variant: 'destructive',
-        })
-        setPasswordLoading(false)
-        return
-      }
-
-      // Update password
+      // Update password directly - Supabase handles security
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       })
@@ -304,14 +296,16 @@ export default function SettingsPage() {
           <CardContent>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="current_password">Current Password</Label>
+                <Label htmlFor="current_password">Current Password *</Label>
                 <div className="relative">
                   <Input
                     id="current_password"
                     type={showPassword ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter your current password"
                     className="border-border/50 focus:border-golden pr-10"
+                    required
                   />
                   <button
                     type="button"
@@ -324,28 +318,57 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="new_password">New Password</Label>
+                <Label htmlFor="new_password">New Password *</Label>
                 <Input
                   id="new_password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
                   className="border-border/50 focus:border-golden"
+                  required
                 />
-                <p className="text-xs text-muted-foreground">
-                  At least 8 characters with uppercase, lowercase, numbers, and symbols
-                </p>
+                <div className="text-xs space-y-1 mt-2 p-2 rounded bg-muted/50">
+                  <p className="font-medium text-muted-foreground">Password must contain:</p>
+                  <div className="space-y-1">
+                    <p className={newPassword.length >= 8 ? 'text-green-600' : 'text-muted-foreground'}>
+                      ✓ At least 8 characters
+                    </p>
+                    <p className={/[A-Z]/.test(newPassword) ? 'text-green-600' : 'text-muted-foreground'}>
+                      ✓ Uppercase letter (A-Z)
+                    </p>
+                    <p className={/[a-z]/.test(newPassword) ? 'text-green-600' : 'text-muted-foreground'}>
+                      ✓ Lowercase letter (a-z)
+                    </p>
+                    <p className={/[0-9]/.test(newPassword) ? 'text-green-600' : 'text-muted-foreground'}>
+                      ✓ Number (0-9)
+                    </p>
+                    <p className={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? 'text-green-600' : 'text-muted-foreground'}>
+                      ✓ Special character (!@#$%^&*...)
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm_password">Confirm Password</Label>
+                <Label htmlFor="confirm_password">Confirm Password *</Label>
                 <Input
                   id="confirm_password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="border-border/50 focus:border-golden"
+                  placeholder="Re-enter new password"
+                  className={`border-border/50 focus:border-golden ${
+                    confirmPassword && newPassword !== confirmPassword ? 'border-red-500' : ''
+                  }`}
+                  required
                 />
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-xs text-red-500">Passwords do not match</p>
+                )}
+                {confirmPassword && newPassword === confirmPassword && (
+                  <p className="text-xs text-green-600">Passwords match</p>
+                )}
               </div>
 
               <Button
