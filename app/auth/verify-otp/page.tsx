@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 
-export default function VerifyOtpPage() {
+function VerifyOtpContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = searchParams.get('email')
@@ -276,5 +276,31 @@ export default function VerifyOtpPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function VerifyOtpLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-border/50 shadow-lg">
+        <CardHeader className="space-y-2 text-center">
+          <div className="h-8 bg-muted rounded w-32 mx-auto" />
+          <div className="h-4 bg-muted rounded w-48 mx-auto mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="h-12 bg-muted rounded" />
+          <div className="h-11 bg-muted rounded" />
+          <div className="h-11 bg-muted rounded" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default function VerifyOtpPage() {
+  return (
+    <Suspense fallback={<VerifyOtpLoading />}>
+      <VerifyOtpContent />
+    </Suspense>
   )
 }
