@@ -79,7 +79,11 @@ export default function RegisterPage() {
   }
 
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 50 }, (_, i) => currentYear - i)
+  // Generate years from 1926 to 2070 (100 years back + 50 years forward)
+  const years = [
+    ...Array.from({ length: 100 }, (_, i) => currentYear - i),
+    ...Array.from({ length: 50 }, (_, i) => currentYear + i + 1)
+  ].sort((a, b) => b - a)
 
   const departments = [
     "Computer Science Engineering",

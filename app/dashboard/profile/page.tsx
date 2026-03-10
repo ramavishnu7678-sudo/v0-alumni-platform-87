@@ -10,8 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { User, Building2, GraduationCap, Phone, Linkedin, Mail, Calendar } from "lucide-react"
+import { User, Building2, GraduationCap, Phone, Linkedin, Mail, Calendar, Camera, Upload } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 interface Profile {
   id: string
@@ -34,6 +35,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -66,11 +69,82 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSave = async (formData: FormData) => {
+  const handleImageUpload = async (file: File) => {
+    if (!profile) return
+
+    setIsUploadingImage(true)
+    try {
+      // Create a preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+
+      // Upload to Supabase Storage
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`
+      const filePath = `profile-images/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
+        upsert: true,
+      })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath)
+
+      // Update profile with image URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ profile_image_url: publicUrl })
+        .eq("id", profile.id)
+
+      if (updateError) throw updateError
+
+      setProfile({ ...profile, profile_image_url: publicUrl })
+      setPreviewImage(null)
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully!",
+      })
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture.",
+        variant: "destructive",
+      })
+      setPreviewImage(null)
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleImageUpload(file)
+    }
+  }
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleImageUpload(file)
+    }
+  }
+
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     if (!profile) return
 
     setIsSaving(true)
     try {
+      const formData = new FormData(e.currentTarget)
       const updates = {
         full_name: formData.get("full_name") as string,
         current_company: (formData.get("current_company") as string) || null,
@@ -140,28 +214,77 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-bold text-foreground">Profile</h1>
           <p className="text-muted-foreground">Manage your personal information and preferences</p>
         </div>
-        {!isEditing && (
-          <Button onClick={() => setIsEditing(true)} className="bg-golden hover:bg-golden/90">
-            Edit Profile
+        <div className="flex gap-2">
+          <Link href="/dashboard/settings">
+            <Button variant="outline">
+              Settings
+            </Button>
+          </Link>
+          <Button 
+            onClick={() => setIsEditing(!isEditing)}
+            className={isEditing ? "bg-red-500 hover:bg-red-600" : "bg-golden hover:bg-golden/90"}
+          >
+            {isEditing ? "Cancel Editing" : "Edit Profile"}
           </Button>
-        )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile Overview Card */}
         <Card className="md:col-span-1 border-border/50">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profile.profile_image_url || ""} />
-                <AvatarFallback className="bg-golden/10 text-golden text-lg">
-                  {profile.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
+            <div className="flex justify-center mb-6 relative group">
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-golden/20">
+                  <AvatarImage src={previewImage || profile.profile_image_url || ""} />
+                  <AvatarFallback className="bg-golden/10 text-golden text-2xl">
+                    {profile.full_name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                {isEditing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        <span className="text-white text-xs">Uploading...</span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <label className="cursor-pointer p-3 bg-golden hover:bg-golden/90 rounded-full transition-all duration-200 transform hover:scale-110" title="Upload from gallery">
+                          <Upload className="h-5 w-5 text-black font-bold" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleGalleryUpload}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                        <label className="cursor-pointer p-3 bg-golden hover:bg-golden/90 rounded-full transition-all duration-200 transform hover:scale-110" title="Capture from camera">
+                          <Camera className="h-5 w-5 text-black font-bold" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleCameraCapture}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
+            {isEditing && (
+              <p className="text-xs text-muted-foreground text-center mb-2">
+                Hover over photo to upload from gallery or camera
+              </p>
+            )}
             <CardTitle className="text-xl">{profile.full_name}</CardTitle>
             <CardDescription className="flex items-center justify-center gap-2">
               <Mail className="h-4 w-4" />
@@ -223,7 +346,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             {isEditing ? (
-              <form action={handleSave} className="space-y-6">
+              <form onSubmit={handleSave} className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="full_name">Full Name *</Label>
@@ -254,8 +377,8 @@ export default function ProfilePage() {
                       id="graduation_year"
                       name="graduation_year"
                       type="number"
-                      min="1950"
-                      max="2030"
+                      min="1926"
+                      max="2070"
                       defaultValue={profile.graduation_year}
                       required
                       className="border-border/50 focus:border-golden"
