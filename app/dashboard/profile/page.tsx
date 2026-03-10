@@ -50,18 +50,35 @@ export default function ProfilePage() {
     try {
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser()
-      if (!user) return
+      
+      if (authError) {
+        console.error("[v0] Auth error:", authError)
+        throw authError
+      }
+      
+      if (!user) {
+        console.log("[v0] No authenticated user found")
+        setIsLoading(false)
+        return
+      }
 
+      console.log("[v0] Fetching profile for user:", user.id)
       const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Profile fetch error:", error)
+        throw error
+      }
+      
+      console.log("[v0] Profile loaded successfully:", data)
       setProfile(data)
     } catch (error) {
-      console.error("Error fetching profile:", error)
+      console.error("[v0] Error fetching profile:", error)
       toast({
         title: "Error",
-        description: "Failed to load profile information.",
+        description: `Failed to load profile information. ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       })
     } finally {
@@ -90,12 +107,17 @@ export default function ProfilePage() {
         upsert: true,
       })
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error("[v0] Storage upload error:", uploadError)
+        throw uploadError
+      }
 
       // Get public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath)
+
+      console.log("[v0] Image uploaded, public URL:", publicUrl)
 
       // Update profile with image URL
       const { error: updateError } = await supabase
@@ -103,7 +125,10 @@ export default function ProfilePage() {
         .update({ profile_image_url: publicUrl })
         .eq("id", profile.id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error("[v0] Profile update error:", updateError)
+        throw updateError
+      }
 
       setProfile({ ...profile, profile_image_url: publicUrl })
       setPreviewImage(null)
@@ -112,10 +137,10 @@ export default function ProfilePage() {
         description: "Profile picture updated successfully!",
       })
     } catch (error) {
-      console.error("Error uploading image:", error)
+      console.error("[v0] Error uploading image:", error)
       toast({
         title: "Error",
-        description: "Failed to upload profile picture.",
+        description: `Failed to upload profile picture. ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       })
       setPreviewImage(null)
@@ -156,10 +181,15 @@ export default function ProfilePage() {
         bio: (formData.get("bio") as string) || null,
       }
 
+      console.log("[v0] Updating profile:", updates)
       const { error } = await supabase.from("profiles").update(updates).eq("id", profile.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Profile update error:", error)
+        throw error
+      }
 
+      console.log("[v0] Profile updated successfully")
       setProfile({ ...profile, ...updates })
       setIsEditing(false)
       toast({
@@ -167,10 +197,10 @@ export default function ProfilePage() {
         description: "Profile updated successfully!",
       })
     } catch (error) {
-      console.error("Error updating profile:", error)
+      console.error("[v0] Error updating profile:", error)
       toast({
         title: "Error",
-        description: "Failed to update profile.",
+        description: `Failed to update profile. ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       })
     } finally {
